@@ -5,6 +5,10 @@ Report shows three independent panels: CV facts, avoidability physics, VLM hypot
 """
 
 import io
+import os
+import shutil
+import subprocess
+import tempfile
 from typing import Optional
 
 import gradio as gr
@@ -111,6 +115,70 @@ def _format_report(result: AnalysisResult) -> str:
     return "\n".join(lines)
 
 
+# ── YouTube / URL fetch ─────────────────────────────────────────────────────
+
+def _to_secs(t: str) -> Optional[int]:
+    """Parse '0:06', '1:12', or '8' into seconds. Returns None if blank."""
+    t = (t or "").strip()
+    if not t:
+        return None
+    try:
+        if ":" in t:
+            s = 0
+            for part in t.split(":"):
+                s = s * 60 + int(part)
+            return s
+        return int(float(t))
+    except ValueError:
+        return None
+
+
+def fetch_video(url: str, start: str = "", dur: float = 10) -> tuple[Optional[str], str]:
+    """
+    Download a video URL (YouTube or direct .mp4) to a temp file via yt-dlp.
+    Optionally grab only a [start, start+dur] window so long clips stay fast.
+    Returns (path, "") on success or (None, human_readable_error).
+    """
+    url = (url or "").strip()
+    if not url:
+        return None, "Paste a video URL first."
+    if shutil.which("yt-dlp") is None:
+        return None, "yt-dlp is not installed on this server — upload a file instead."
+
+    tmpdir = tempfile.mkdtemp(prefix="ey_")
+    out    = os.path.join(tmpdir, "clip.%(ext)s")
+    cmd    = ["yt-dlp", "--no-playlist", "--no-warnings",
+              "-f", "mp4[height<=720]/mp4/best",
+              "--max-filesize", "300M", "-o", out]
+
+    start_s = _to_secs(start)
+    if start_s is not None:
+        end_s = start_s + int(dur or 10)
+        cmd += ["--download-sections", f"*{start_s}-{end_s}", "--force-keyframes-at-cuts"]
+
+    cmd.append(url)
+
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+    except subprocess.TimeoutExpired:
+        return None, "Download timed out — try a shorter window or upload the file."
+    except Exception as exc:
+        return None, f"Fetch error: {exc} — upload the file instead."
+
+    if proc.returncode != 0:
+        err = (proc.stderr or "").lower()
+        if "sign in" in err or "bot" in err or "confirm you" in err:
+            return None, ("YouTube blocked the server-side download (bot check). "
+                          "This is expected from cloud IPs — upload the file instead.")
+        tail = (proc.stderr or "download failed").strip().splitlines()[-1:]
+        return None, f"Could not fetch video: {tail[0] if tail else 'unknown error'}"
+
+    files = [os.path.join(tmpdir, f) for f in os.listdir(tmpdir)]
+    if not files:
+        return None, "Download produced no file — upload the file instead."
+    return max(files, key=os.path.getsize), ""
+
+
 # ── Gradio handlers ───────────────────────────────────────────────────────────
 
 def on_analyze(video_path: Optional[str]):
@@ -123,6 +191,13 @@ def on_analyze(video_path: Optional[str]):
         kf_imgs.append(None)
 
     return (*kf_imgs[:4], _format_report(result), result)
+
+
+def on_analyze_url(url: str, start: str, dur: float):
+    path, err = fetch_video(url, start, dur)
+    if err:
+        return None, None, None, None, f"### ⚠ {err}", None
+    return on_analyze(path)
 
 
 def on_override(result: Optional[AnalysisResult], override_reason: str):
@@ -153,6 +228,22 @@ with gr.Blocks(theme=gr.themes.Monochrome(), title="Eyewitness") as demo:
         "Fault is determined by physics first, AI second."
     )
 
+    gr.Markdown("#### Option A · Paste a video URL  *(YouTube or direct .mp4)*")
+    with gr.Row():
+        url_input   = gr.Textbox(
+            label="Video URL",
+            placeholder="https://www.youtube.com/watch?v=…",
+            scale=4,
+        )
+        start_input = gr.Textbox(label="Start (m:ss)", placeholder="0:06", scale=1, min_width=90)
+        dur_input   = gr.Number(label="Seconds", value=10, precision=0, scale=1, minimum=2, maximum=60)
+        fetch_btn   = gr.Button("⬇ Fetch & Analyze", variant="primary", scale=1, min_width=150)
+    gr.Markdown(
+        "<sub>Tip: from a long compilation, set a Start time + Seconds to grab just the incident. "
+        "If YouTube blocks the cloud download, use Option B.</sub>"
+    )
+
+    gr.Markdown("#### Option B · Upload a file  *(most reliable)*")
     with gr.Row():
         video_input = gr.Video(label="Dashcam clip", scale=3)
         analyze_btn = gr.Button("⚡ Analyze", variant="primary", scale=1, min_width=120)
@@ -180,11 +271,18 @@ with gr.Blocks(theme=gr.themes.Monochrome(), title="Eyewitness") as demo:
         override_btn = gr.Button("Submit Override", variant="secondary", scale=1, min_width=160)
     override_status = gr.Textbox(label="Override status", interactive=False)
 
+    _analysis_outputs = [frame_overview, frame_pre, frame_impact, frame_post,
+                         report_md, result_state]
+
     analyze_btn.click(
         fn      = on_analyze,
         inputs  = [video_input],
-        outputs = [frame_overview, frame_pre, frame_impact, frame_post,
-                   report_md, result_state],
+        outputs = _analysis_outputs,
+    )
+    fetch_btn.click(
+        fn      = on_analyze_url,
+        inputs  = [url_input, start_input, dur_input],
+        outputs = _analysis_outputs,
     )
     override_btn.click(
         fn      = on_override,
