@@ -1,0 +1,10 @@
+.env
+*.swp
+*.swo
+__pycache__/
+*.py[cod]
+*.pt
+*.mp4
+*.avi
+*.mov
+.DS_Store

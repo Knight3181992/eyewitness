@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: eyewitness
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false          # set in Render dashboard
+      - key: BUTTERBASE_API_KEY
+        sync: false          # set in Render dashboard
+      - key: YOLO_MODEL
+        value: yolo11n.pt    # CPU-friendly default; override to yolo11x.pt with GPU plan
+      - key: GRADIO_SHARE
+        value: "false"
